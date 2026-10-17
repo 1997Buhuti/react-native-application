@@ -1,0 +1,50 @@
+---
+description: Declarative programming with short, clear comments so the codebase reads like documentation
+alwaysApply: true
+---
+
+# Declarative code & readable docs
+
+Write code so a reader can understand intent by scanning names, structure, and brief comments — not by reverse-engineering side effects.
+
+## Prefer declaring over doing
+
+- **Name the what, hide the how**: functions and variables describe outcomes (`remainingTodos`, `addTodo`), not steps (`handleClick1`).
+- **Compose small units**: UI describes layout; hooks/repos describe data; avoid long imperative blocks in components.
+- **Data in, UI out**: derive display values (`canAdd`, `subtitle`) instead of mutating into view state.
+- **One concern per file**: screen → hook → repository → client. Side effects live in the lowest layer that needs them.
+
+```tsx
+// ❌ Imperative soup in the screen
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    const res = await fetch(...);
+    const json = await res.json();
+    if (!cancelled) setTodos(json.map(...));
+  })();
+  return () => { cancelled = true };
+}, []);
+
+// ✅ Screen declares intent; hook owns the flow
+const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
+```
+
+## Comments & file docs
+
+- Start non-trivial files with a **1–3 line purpose** comment (what this module is responsible for).
+- Comment **why** or a non-obvious constraint — never narrate obvious code.
+- Keep comments **short** (one line when possible). Prefer better names over longer comments.
+- Public exports may use a one-line JSDoc describing the contract.
+
+```ts
+/** Loads and mutates todos via Supabase. */
+export function useTodos() { ... }
+```
+
+## Structure checklist
+
+- Types first (`Todo`, `TodoInsert`) near the top of the domain file.
+- Pure helpers before hooks/components that use them.
+- No unexplained magic strings — use named constants or typed maps.
+- Errors: surface a clear message upward; do not swallow silently.
