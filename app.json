@@ -7,9 +7,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.reactnativeapplication.app"
     },
     "android": {
+      "package": "com.reactnativeapplication.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,6 +24,12 @@
     },
     "plugins": [
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "49d47ad8-1715-4ea0-beee-ba60befe499d"
+      }
+    },
+    "owner": "buhuti"
   }
 }
