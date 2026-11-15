@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import styled from 'styled-components/native';
 
 import TodoItem from './components/TodoItem';
+import EdgeFunctionDemo from './components/EdgeFunctionDemo';
 import type { Todo } from './src/features/todos/types';
 import { useTodos } from './src/features/todos/useTodos';
 
@@ -137,6 +138,8 @@ export default function App() {
             <Subtitle>{subtitle}</Subtitle>
             {error ? <ErrorText>{error}</ErrorText> : null}
           </Header>
+
+          <EdgeFunctionDemo onAddSuggestedTask={addTodo} />
 
           <InputRow>
             <Input
