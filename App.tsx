@@ -1,6 +1,6 @@
 /**
- * Todo screen: compose header + input + list.
- * Data & persistence live in `useTodos` — this file only declares the UI.
+ * App entry: shows the login screen until there is a Supabase session, then the todo screen.
+ * Data & persistence live in `useTodos`, and auth state lives in `useAuth`.
  */
 
 import { useState } from 'react';
@@ -15,8 +15,10 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import styled from 'styled-components/native';
 
+import LoginScreen from './components/LoginScreen';
 import TodoItem from './components/TodoItem';
 import EdgeFunctionDemo from './components/EdgeFunctionDemo';
+import { useAuth } from './src/features/auth/useAuth';
 import type { Todo } from './src/features/todos/types';
 import { useTodos } from './src/features/todos/useTodos';
 
@@ -57,6 +59,35 @@ const ErrorText = styled.Text`
   margin-top: 8px;
   font-size: 13px;
   color: #ff3b30;
+`;
+
+const UserRow = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+`;
+
+const UserEmail = styled.Text`
+  flex: 1;
+  margin-right: 12px;
+  font-size: 13px;
+  color: #8e8e93;
+`;
+
+const SignOutButton = styled.Pressable`
+  height: 32px;
+  padding-horizontal: 12px;
+  border-radius: 16px;
+  background-color: #e5e5ea;
+  align-items: center;
+  justify-content: center;
+`;
+
+const SignOutText = styled.Text`
+  font-size: 13px;
+  font-weight: 500;
+  color: #3a3a3c;
 `;
 
 const InputRow = styled.View`
@@ -109,7 +140,14 @@ function subtitleFor(todosLength: number, remaining: number, loading: boolean): 
   return `${remaining} of ${todosLength} remaining`;
 }
 
-export default function App() {
+type TodoScreenProps = {
+  userEmail: string;
+  authError: string | null;
+  onSignOut: () => Promise<void>;
+};
+
+/** The todo UI. Only mounted while signed in, so its Supabase calls run with a session. */
+function TodoScreen({ userEmail, authError, onSignOut }: TodoScreenProps) {
   const [text, setText] = useState('');
   const { todos, loading, error, addTodo, toggleTodo, deleteTodo } = useTodos();
 
@@ -129,54 +167,90 @@ export default function App() {
   );
 
   return (
+    <Container behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Header>
+        <Title>Todo</Title>
+        <Subtitle>{subtitle}</Subtitle>
+        {error ? <ErrorText>{error}</ErrorText> : null}
+        {authError ? <ErrorText>{authError}</ErrorText> : null}
+
+        <UserRow>
+          <UserEmail numberOfLines={1}>{userEmail}</UserEmail>
+          <SignOutButton onPress={onSignOut} style={pressedStyle} accessibilityRole="button">
+            <SignOutText>Sign out</SignOutText>
+          </SignOutButton>
+        </UserRow>
+      </Header>
+
+      <EdgeFunctionDemo onAddSuggestedTask={addTodo} />
+
+      <InputRow>
+        <Input
+          value={text}
+          onChangeText={setText}
+          placeholder="Add a task"
+          placeholderTextColor="#AEAEB2"
+          returnKeyType="done"
+          onSubmitEditing={onAdd}
+          submitBehavior="submit"
+        />
+        <AddButton
+          onPress={onAdd}
+          disabled={!canAdd}
+          style={pressedStyle}
+          accessibilityRole="button"
+        >
+          <AddButtonText>Add</AddButtonText>
+        </AddButton>
+      </InputRow>
+
+      {loading && todos.length === 0 ? (
+        <Center>
+          <ActivityIndicator color={ACCENT} />
+        </Center>
+      ) : (
+        <FlatList
+          data={todos}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTodo}
+          ItemSeparatorComponent={Divider}
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+    </Container>
+  );
+}
+
+export default function App() {
+  const auth = useAuth();
+
+  return (
     <SafeAreaProvider>
       <Screen>
         <StatusBar style="dark" />
-        <Container behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Header>
-            <Title>Todo</Title>
-            <Subtitle>{subtitle}</Subtitle>
-            {error ? <ErrorText>{error}</ErrorText> : null}
-          </Header>
 
-          <EdgeFunctionDemo onAddSuggestedTask={addTodo} />
-
-          <InputRow>
-            <Input
-              value={text}
-              onChangeText={setText}
-              placeholder="Add a task"
-              placeholderTextColor="#AEAEB2"
-              returnKeyType="done"
-              onSubmitEditing={onAdd}
-              submitBehavior="submit"
-            />
-            <AddButton
-              onPress={onAdd}
-              disabled={!canAdd}
-              style={pressedStyle}
-              accessibilityRole="button"
-            >
-              <AddButtonText>Add</AddButtonText>
-            </AddButton>
-          </InputRow>
-
-          {loading && todos.length === 0 ? (
-            <Center>
-              <ActivityIndicator color={ACCENT} />
-            </Center>
-          ) : (
-            <FlatList
-              data={todos}
-              keyExtractor={(item) => item.id}
-              renderItem={renderTodo}
-              ItemSeparatorComponent={Divider}
-              contentContainerStyle={styles.list}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </Container>
+        {auth.loading ? (
+          // Waiting for the saved session check, so we don't flash the login screen.
+          <Center>
+            <ActivityIndicator color={ACCENT} />
+          </Center>
+        ) : auth.session ? (
+          <TodoScreen
+            userEmail={auth.session.user.email ?? 'Signed in'}
+            authError={auth.error}
+            onSignOut={auth.signOut}
+          />
+        ) : (
+          <LoginScreen
+            busy={auth.busy}
+            error={auth.error}
+            notice={auth.notice}
+            onSignIn={auth.signInWithPassword}
+            onSignUp={auth.signUpWithPassword}
+          />
+        )}
       </Screen>
     </SafeAreaProvider>
   );
